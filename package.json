@@ -1,0 +1,15 @@
+{
+  "name": "pdf-anchor-finder",
+  "version": "1.0.0",
+  "description": "Findet frei wählbare Text-Anker in PDFs und übersetzt sie in Koordinaten für die Platzierung von Formular-/Signaturfeldern. Plattform-unabhängig.",
+  "main": "pdf-anchor-finder.mjs",
+  "type": "commonjs",
+  "scripts": {
+    "start": "node pdf-anchor-finder.mjs"
+  },
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "pdfjs-dist": "^4.10.38"
+  }
+}
