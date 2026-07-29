@@ -23,6 +23,12 @@
  * Personen an derselben Stelle auf verschiedenen Seiten, oder derselbe
  * Anker für mehrere Felder). Das Skript findet ALLE Vorkommen.
  *
+ * Durchsucht werden sowohl der normale Seiteninhalt (Text) als auch
+ * Annotationen (z.B. Kommentare/FreeText, ausgefüllte Formularfeldwerte) —
+ * also auch Anker, die nachträglich per PDF-Editor/Kommentarfunktion
+ * hinzugefügt wurden, statt beim Erstellen der Vorlage in den Seiteninhalt
+ * eingebettet zu sein.
+ *
  * -----------------------------------------------------------------------------
  * ⚠️  DISCLAIMER — DPI-Umrechnung & Default-Feldgröße
  * -----------------------------------------------------------------------------
@@ -166,6 +172,23 @@ function findAnchors(items, anchorText) {
   return groups.flatMap((group) => findAnchorsInLine(group, anchorText));
 }
 
+// --- Anker in Annotationen suchen (Kommentare/FreeText, ausgefüllte Formularfelder) ---
+// page.getTextContent() liefert NUR den eigentlichen Seiteninhalt. Text, der
+// nachträglich als Kommentar (z.B. FreeText-Annotation) oder als Wert eines
+// Formularfelds hinzugefügt wurde, taucht dort nicht auf und muss separat
+// über page.getAnnotations() durchsucht werden.
+
+export function findAnchorsInAnnotations(annotations, anchorText) {
+  const anchors = [];
+  for (const annot of annotations) {
+    const text = annot.contentsObj?.str ?? annot.fieldValue ?? "";
+    if (!annot.rect || typeof text !== "string" || !text.includes(anchorText)) continue;
+    const [x0, y0, x1] = annot.rect;
+    anchors.push({ x: x0, width: Math.max(x1 - x0, 1), yBottomUp: y0 });
+  }
+  return anchors;
+}
+
 // --- Feld zentriert auf der Anker-Position bauen ---
 // Nutzt die Koordinatentransformation des Viewports selbst (kein manuelles
 // "pageHeight - y"), damit auch gedrehte oder versetzte Seiten korrekt
@@ -227,9 +250,14 @@ export async function findAnchorPositions(pdfPath, anchorTexts, options = {}) {
     // gewählten DPI-Konvention (siehe Disclaimer oben)
     const viewportPx = targetDpi ? page.getViewport({ scale: targetDpi / PDF_POINTS_DPI }) : null;
     const textContent = await page.getTextContent();
+    const annotations = await page.getAnnotations();
 
     for (const anchorText of anchorTexts) {
-      for (const anchor of findAnchors(textContent.items, anchorText)) {
+      const anchors = [
+        ...findAnchors(textContent.items, anchorText),
+        ...findAnchorsInAnnotations(annotations, anchorText),
+      ];
+      for (const anchor of anchors) {
         results.push(
           buildResultFromAnchor(anchor, pageNum, viewportPdf, viewportPx, anchorText, fieldWidthPx, fieldHeightPx, targetDpi)
         );
@@ -266,18 +294,21 @@ function parseArgs(argv) {
   return { options, positional };
 }
 
-const { options, positional } = parseArgs(process.argv.slice(2));
-const [pdfFile, ...anchorTexts] = positional;
+const isMain = process.argv[1] && resolve(process.argv[1]) === resolve(new URL(import.meta.url).pathname);
 
-if (!pdfFile || anchorTexts.length === 0) {
-  console.error(
-    "Usage: node pdf-anchor-finder.mjs [--width=<px>] [--height=<px>] [--aspect-ratio=<n>] [--dpi=<n>] <pdf-datei> <anker1> [anker2] ..."
-  );
-  console.error('Beispiel: node pdf-anchor-finder.mjs vertrag.pdf "$$Signer1" "$$Signer2"');
-  process.exit(1);
-}
+if (isMain) {
+  const { options, positional } = parseArgs(process.argv.slice(2));
+  const [pdfFile, ...anchorTexts] = positional;
 
-findAnchorPositions(pdfFile, anchorTexts, options)
+  if (!pdfFile || anchorTexts.length === 0) {
+    console.error(
+      "Usage: node pdf-anchor-finder.mjs [--width=<px>] [--height=<px>] [--aspect-ratio=<n>] [--dpi=<n>] <pdf-datei> <anker1> [anker2] ..."
+    );
+    console.error('Beispiel: node pdf-anchor-finder.mjs vertrag.pdf "$$Signer1" "$$Signer2"');
+    process.exit(1);
+  }
+
+  findAnchorPositions(pdfFile, anchorTexts, options)
   .then((results) => {
     if (results.length === 0) {
       console.log("Keine Anker gefunden.");
@@ -298,3 +329,4 @@ findAnchorPositions(pdfFile, anchorTexts, options)
     console.error("Fehler beim Verarbeiten der PDF:", err.message);
     process.exit(1);
   });
+}
