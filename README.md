@@ -93,6 +93,9 @@ node pdf-anchor-finder.mjs vertrag.pdf "$$Signer1" "$$Signer2"
 
 - Ein Anker kann mehrfach vorkommen (z. B. auf mehreren Seiten) — das Skript
   findet und listet alle Vorkommen einzeln auf.
+- Durchsucht werden sowohl der Seiteninhalt als auch Annotationen (Kommentare/
+  FreeText, ausgefüllte Formularfeldwerte) — auch nachträglich per PDF-Editor
+  hinzugefügte Anker werden also gefunden.
 - Kommt kein Treffer zurück, prüft: (1) Stimmt der Anker-Text exakt überein
   (Groß-/Kleinschreibung, Sonderzeichen)? (2) Ist die PDF textbasiert und
   nicht nur ein eingescanntes Bild?
