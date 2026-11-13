@@ -1,5 +1,7 @@
 # pdf-anchor-finder
 
+🌐 **Deutsch** | [English](./README.en.md)
+
 Findet frei wählbare Text-Anker in einer PDF (z. B. `$$Signer1`, `[[SIG_A]]`,
 `___UNTERSCHRIFT___`) und übersetzt deren Position in Koordinaten, die sich
 für die Platzierung von Formularfeldern (Signatur, Datum, Freitext, Stempel,
